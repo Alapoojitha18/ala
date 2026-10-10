@@ -1,17 +1,23 @@
 package com.example.ala.Student.Service;
 
 import com.example.ala.Configuration.ResponseGlobal;
-import com.example.ala.Exception.StudentNotFoundException;
+
+import com.example.ala.Enum.RoleEnum;
+import com.example.ala.Student.DTO.AdminDTO;
 import com.example.ala.Student.DTO.StudentDto;
 import com.example.ala.Student.Entity.Address;
+import com.example.ala.Student.Entity.Admin;
 import com.example.ala.Student.Entity.Login;
+
 import com.example.ala.Student.Entity.Student;
+import com.example.ala.Student.Repo.AdminRepo;
 import com.example.ala.Student.Repo.LoginRepository;
 import com.example.ala.Student.Repo.StudentRepos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,30 +25,38 @@ public class StudentService {
 
     private final StudentRepos studentRepos;
     private final LoginRepository loginRepository;
+    private final AdminRepo adminRepo;
 
 
+    // =========================
     // CREATE STUDENT
-    public ResponseGlobal<StudentDto> createStudent(StudentDto student) {
+    // =========================
 
-        // Email validation
-        if (student.getEmail() == null || student.getEmail().isEmpty()) {
-            return ResponseGlobal.onError("Email is required.");
-        }
+    public ResponseGlobal<StudentDto> createStudent(
+            StudentDto student) {
 
-        // Check email uniqueness
-        Student existingStudent =
-                studentRepos.findByEmail(student.getEmail());
+        if (student.getEmail() == null ||
+                student.getEmail().trim().isEmpty()) {
 
-        System.out.println(
-                "Requested Email: " + student.getEmail()
-                        + " | Existing Student: " + existingStudent
-        );
-
-        if (existingStudent != null) {
             return ResponseGlobal.onFailure(
-                    "This student email is already attached to another student."
+                    "Email is required."
             );
         }
+
+
+        Student existingStudent =
+                studentRepos.findByEmail(
+                        student.getEmail()
+                );
+
+
+        if (existingStudent != null) {
+
+            return ResponseGlobal.onFailure(
+                    "This email is already being used by another student."
+            );
+        }
+
 
         // Create Student
         Student newStudent = new Student();
@@ -53,6 +67,7 @@ public class StudentService {
         newStudent.setEmail(student.getEmail());
         newStudent.setStatus(true);
 
+
         // Create Address
         Address address = new Address();
 
@@ -62,6 +77,7 @@ public class StudentService {
 
         newStudent.setAddress(address);
 
+
         // Save Student
         studentRepos.save(newStudent);
 
@@ -69,84 +85,159 @@ public class StudentService {
         // Create Login
         Login login = new Login();
 
-        login.setPassword(student.getPassword());
         login.setEmail(student.getEmail());
+        login.setPassword(student.getPassword());
         login.setName(student.getName());
 
+
+        // IMPORTANT
+        login.setRole(RoleEnum.ADMIN.name());
         loginRepository.save(login);
 
 
         return ResponseGlobal.onSuccess(
-                "Student and login details have been created successfully.",
+                "Student and login details created successfully.",
                 student
         );
     }
 
 
+    // =========================
     // GET STUDENT BY ID
-    public Student getStudentById(Long id) {
+    // =========================
 
-        return studentRepos.findById(id)
-                .orElseThrow(
-                        () -> new StudentNotFoundException(
-                                "Student not found with id: " + id
-                        )
-                );
-    }
-
-
-    // GET ALL STUDENTS
-    public List<Student> getAllStudents() {
-
-        return studentRepos.findAll();
-    }
-
-
-    // UPDATE STUDENT
-    public ResponseGlobal<Student> updateStudent(
-            Long id,
-            Student student
-    ) {
+    public ResponseGlobal<Student> getStudentById(
+            Long id) {
 
         if (id == null) {
-            return ResponseGlobal.onError(
-                    "Student id is required."
+
+            return ResponseGlobal.onFailure(
+                    "Student ID is required."
             );
         }
 
-        // Find existing student
-        Student existingStudent = studentRepos.findById(id)
-                .orElseThrow(
-                        () -> new StudentNotFoundException(
-                                "Student not found with id: " + id
-                        )
-                );
+
+        Optional<Student> optionalStudent =
+                studentRepos.findById(id);
 
 
-        // Check email only if email is being changed
-        if (student.getEmail() != null &&
-                !student.getEmail().equals(existingStudent.getEmail())) {
+        if (optionalStudent.isEmpty()) {
 
-            Student existingEmail =
-                    studentRepos.findByEmail(student.getEmail());
-
-            if (existingEmail != null) {
-                return ResponseGlobal.onFailure(
-                        "This email is already attached to another student."
-                );
-            }
-
-            existingStudent.setEmail(student.getEmail());
+            return ResponseGlobal.onFailure(
+                    "Student not found with id: " + id
+            );
         }
 
 
-        // Update fields
-        existingStudent.setName(student.getName());
-        existingStudent.setAge(student.getAge());
-        existingStudent.setPercentage(student.getPercentage());
+        Student student =
+                optionalStudent.get();
 
 
-        // Save updated student
+        return ResponseGlobal.onSuccess(
+                "Student retrieved successfully.",
+                student
+        );
+    }
+
+
+    // =========================
+    // GET ALL STUDENTS
+    // =========================
+
+    public ResponseGlobal<List<Student>> getAllStudents() {
+
+        List<Student> students =
+                studentRepos.findAll();
+
+
+        if (students.isEmpty()) {
+
+            return ResponseGlobal.onFailure(
+                    "No students found."
+            );
+        }
+
+
+        return ResponseGlobal.onSuccess(
+                "Students retrieved successfully.",
+                students
+        );
+    }
+
+
+    // =========================
+    // UPDATE STUDENT
+    // =========================
+
+    public ResponseGlobal<Student> updateStudent(
+            Long id,
+            Student student) {
+
+
+        if (id == null) {
+
+            return ResponseGlobal.onFailure(
+                    "Student ID is required."
+            );
+        }
+
+
+        Optional<Student> optionalStudent =
+                studentRepos.findById(id);
+
+
+        if (optionalStudent.isEmpty()) {
+
+            return ResponseGlobal.onFailure(
+                    "Student not found with id: " + id
+            );
+        }
+
+
+        Student existingStudent =
+                optionalStudent.get();
+
+
+        // Check email
+        if (student.getEmail() != null &&
+                !student.getEmail().trim().isEmpty()) {
+
+
+            Student existingEmail =
+                    studentRepos.findByEmail(
+                            student.getEmail()
+                    );
+
+
+            // Email belongs to another student
+            if (existingEmail != null &&
+                    !existingEmail.getId().equals(id)) {
+
+                return ResponseGlobal.onFailure(
+                        "This email is already being used by another student."
+                );
+            }
+
+
+            existingStudent.setEmail(
+                    student.getEmail()
+            );
+        }
+
+
+        existingStudent.setName(
+                student.getName()
+        );
+
+        existingStudent.setAge(
+                student.getAge()
+        );
+
+        existingStudent.setPercentage(
+                student.getPercentage()
+        );
+
+
         Student updatedStudent =
                 studentRepos.save(existingStudent);
 
@@ -158,18 +249,131 @@ public class StudentService {
     }
 
 
+    // =========================
     // DELETE STUDENT
-    public String deleteStudent(Long id) {
+    // =========================
+
+    public ResponseGlobal<String> deleteStudent(
+            Long id) {
+
+
+        if (id == null) {
+
+            return ResponseGlobal.onFailure(
+                    "Student ID is required."
+            );
+        }
+
 
         if (!studentRepos.existsById(id)) {
 
-            return "Student with id " + id
-                    + " does not exist.";
+            return ResponseGlobal.onFailure(
+                    "Student with id " + id +
+                            " does not exist."
+            );
         }
+
 
         studentRepos.deleteById(id);
 
-        return "Student with id " + id
-                + " has been deleted successfully.";
+
+        return ResponseGlobal.onSuccess(
+                "Student deleted successfully.",
+                "Student with id " + id +
+                        " has been deleted."
+        );
+    }
+
+
+    // =========================
+    // CREATE ADMIN
+    // =========================
+
+    public ResponseGlobal<AdminDTO> createAdmin(
+            AdminDTO adminDTO) {
+
+
+        if (adminDTO.getEmail() == null ||
+                adminDTO.getEmail().trim().isEmpty()) {
+
+            return ResponseGlobal.onFailure(
+                    "Email is required for Admin creation."
+            );
+        }
+
+
+        if (adminDTO.getPassword() == null ||
+                adminDTO.getPassword().trim().isEmpty()) {
+
+            return ResponseGlobal.onFailure(
+                    "Password is required for Admin creation."
+            );
+        }
+
+
+        if (adminDTO.getSecretKey() == null ||
+                adminDTO.getSecretKey().trim().isEmpty()) {
+
+            return ResponseGlobal.onFailure(
+                    "Secret Key is required for Admin creation."
+            );
+        }
+
+
+        if (!adminDTO.getSecretKey().equals(secretKey())) {
+
+            return ResponseGlobal.onFailure(
+                    "Invalid Secret Key provided."
+            );
+        }
+
+
+        boolean emailExists =
+                loginRepository.existsByEmail(
+                        adminDTO.getEmail()
+                );
+
+
+        if (emailExists) {
+
+            return ResponseGlobal.onFailure(
+                    "This email is already being used."
+            );
+        }
+
+
+        // Create Admin
+        Admin admin = new Admin();
+
+        admin.setEmail(adminDTO.getEmail());
+        admin.setName(adminDTO.getName());
+
+        adminRepo.save(admin);
+
+
+        // Create Login
+        Login login = new Login();
+
+        login.setEmail(adminDTO.getEmail());
+        login.setPassword(adminDTO.getPassword());
+        login.setName(adminDTO.getName());
+
+        login.setRole(
+                RoleEnum.ADMIN.name()
+        );
+
+        loginRepository.save(login);
+
+
+        return ResponseGlobal.onSuccess(
+                "Admin has been created successfully.",
+                adminDTO
+        );
+    }
+
+
+    private String secretKey() {
+
+        return "kanna123456789012345678901234567890";
     }
 }

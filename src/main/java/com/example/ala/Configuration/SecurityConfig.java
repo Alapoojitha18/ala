@@ -30,10 +30,16 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login/**").permitAll()
+
+                        // PUBLIC
+                        .requestMatchers("/admin/createAdmin").permitAll()
                         .requestMatchers("/students/createStudent").permitAll()
-                        .requestMatchers("/students/**").authenticated()
+                        .requestMatchers("/login/**").permitAll()
                         .requestMatchers("/test").permitAll()
+
+                        // PROTECTED
+                        .requestMatchers("/students/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
 
