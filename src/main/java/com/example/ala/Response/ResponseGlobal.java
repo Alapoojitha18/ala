@@ -1,14 +1,13 @@
+package com.example.ala.Response;
 
-        package com.example.ala.Configuration;
-
-import lombok.Data;
-
-@Data
 public class ResponseGlobal<T> {
 
     private boolean success;
     private String message;
     private T data;
+
+    public ResponseGlobal() {
+    }
 
     public ResponseGlobal(boolean success, String message, T data) {
         this.success = success;
@@ -16,10 +15,11 @@ public class ResponseGlobal<T> {
         this.data = data;
     }
 
+    // Success response
     public static <T> ResponseGlobal<T> onSuccess(
             String message,
-            T data) {
-
+            T data
+    ) {
         return new ResponseGlobal<>(
                 true,
                 message,
@@ -27,9 +27,10 @@ public class ResponseGlobal<T> {
         );
     }
 
+    // Failure response
     public static <T> ResponseGlobal<T> onFailure(
-            String message) {
-
+            String message
+    ) {
         return new ResponseGlobal<>(
                 false,
                 message,
@@ -37,13 +38,38 @@ public class ResponseGlobal<T> {
         );
     }
 
+    // Error response
     public static <T> ResponseGlobal<T> onError(
-            String message) {
-
+            String message
+    ) {
         return new ResponseGlobal<>(
                 false,
                 message,
                 null
         );
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public void setData(T data) {
+        this.data = data;
     }
 }

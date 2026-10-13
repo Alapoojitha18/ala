@@ -2,88 +2,61 @@
         package com.example.ala.Student.Service;
 
 import com.example.ala.Configuration.JWTService;
-import com.example.ala.Configuration.ResponseGlobal;
+import com.example.ala.Response.ResponseGlobal;
 import com.example.ala.Student.Entity.Login;
 import com.example.ala.Student.Repo.LoginRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class LoginService {
 
     private final LoginRepository loginRepository;
     private final JWTService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
+    public LoginService(
+            LoginRepository loginRepository,
+            JWTService jwtService,
+            PasswordEncoder passwordEncoder) {
+        this.loginRepository = loginRepository;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-    public ResponseGlobal<String> login(
-            String email,
-            String password) {
+    public ResponseGlobal<?> login(String email, String password) {
 
-
-        // Check email
-        if (email == null || email.trim().isEmpty()) {
-
+        if (email == null || email.isBlank()
+                || password == null || password.isBlank()) {
             return ResponseGlobal.onFailure(
-                    "Email is required."
-            );
+                    "Email and password are required");
         }
 
+        Login user = loginRepository.findByEmail(email.trim());
 
-        // Check password
-        if (password == null || password.trim().isEmpty()) {
-
+        if (user == null || user.getPassword() == null) {
             return ResponseGlobal.onFailure(
-                    "Password is required."
-            );
+                    "Invalid email or password");
         }
 
-
-        // Find user by email
-        Login user =
-                loginRepository.findByEmail(email);
-
-
-        if (user == null) {
-
+        // Database password must be a BCrypt hash.
+        if (!passwordEncoder.matches(
+                password, user.getPassword())) {
             return ResponseGlobal.onFailure(
-                    "User not found with email: " + email
-            );
+                    "Invalid email or password");
         }
 
-
-        // Check email and password
-        Login validUser =
-                loginRepository.findByEmailAndPassword(
-                        email,
-                        password
-                );
-
-
-        if (validUser == null) {
-
-            return ResponseGlobal.onFailure(
-                    "Invalid password."
-            );
-        }
-
-
-        // Get role
-        String role = validUser.getRole();
-
-
-        // Generate JWT
-        String jwt =
-                jwtService.generateToken(
-                        validUser.getEmail(),
-                        validUser.getName(),
-                        role
-                );
-
+        // JWTService must generate a token with subject=email
+        // and a role claim.
+        String token = jwtService.generateToken(
+                user.getEmail(),
+                user.getName(),
+                "STAFF"
+        );
 
         return ResponseGlobal.onSuccess(
-                "Login successful.",
-                jwt
+                "Login successful",
+                token
         );
     }
 }

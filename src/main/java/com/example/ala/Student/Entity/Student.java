@@ -1,35 +1,40 @@
 package com.example.ala.Student.Entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.Data;
 
 @Entity
 @Data
-//data has setter , getter , noargs constructor , all args constructor , toString , equals and hashcode methods.
-@Table(name = "students")
 public class Student {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    //id is the primary key for the student entity and will be generated automatically.
 
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
     private String name;
+
+    @Min(value = 18, message = "Age must be at least 18")
     private int age;
-    private double percentage;
+
+    @NotNull(message = "Percentage is required")
+    @Min(value = 0, message = "Percentage cannot be less than 0")
+    @Max(value = 100, message = "Percentage cannot be greater than 100")
+    private Integer percentage;
+
+    @Email(message = "Please enter a valid email")
     private String email;
 
-    private boolean status ; //false and true
+    private boolean status;
 
-
-    @OneToOne(cascade = CascadeType.ALL , fetch = FetchType.LAZY)
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "address_id")
     private Address address;
 
-    //hard Delete , Soft delete
-
-
-    //Lazy will actually generate the address only when we call the getAddress method and it will not generate the address when we call the getStudent method.
-    //eager will actually generate all of the address when we call the getStudent method and it will not generate the address when we call the getAddress method.
+    // Default constructor - required by JPA
+    public Student() {
+    }
 }
-

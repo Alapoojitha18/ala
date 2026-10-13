@@ -1,5 +1,4 @@
 package com.example.ala.Student.Entity;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
